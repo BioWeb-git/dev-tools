@@ -40,7 +40,7 @@ while true; do
         3)
             echo -e "\n${CYAN}>>> Lancement de la désinstallation (teardown_projet.sh)...${NC}"
             if [ -x ./dev-tools/teardown_projet.sh ]; then
-                ./dev-tools/teardown_projet.sh
+                source ./dev-tools/teardown_projet.sh
             else
                 echo -e "${RED}ERREUR : Le script teardown_projet.sh est introuvable ou non exécutable. (Vérifiez le chemin)${NC}"
             fi

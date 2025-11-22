@@ -286,7 +286,7 @@ sudo setfacl -dR -m u:www-data:rwX -m u:pouet:rwX .
 echo "   Restauration et migration de la base de données..."
 {
     php vendor/bin/contao-console contao:backup:restore -n
-    echo 2 | php vendor/bin/contao-console contao:migrate --no-backup
+    echo 2 | php vendor/bin/contao-console contao:migrate --no-backup -n
 } &
 spinner $!
 echo -e "${GREEN}Migration terminée.${NC}"
@@ -339,6 +339,7 @@ if [[ "$CHOICE_ACTION" == "2" ]]; then
     echo -e "${GREEN}   ✅ Dépôt initialisé et poussé.${NC}"
 fi
 
+cd ..
 
 echo -e "\n${GREEN}--- INSTALLATION TERMINÉE DANS WSL ! ---${NC}"
 

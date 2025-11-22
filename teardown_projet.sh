@@ -134,11 +134,29 @@ fi;
 
 # 4. Vérification de l'existence du fichier VHost (supprimé)
 echo -n "4. Fichier VHost (/etc/apache2/sites-available/) : ";
-if ! sudo test -f "/etc/apache2/sites-available/${DOMAIN_LOCAL}.conf"; then 
-    echo -e "${GREEN}[OK] Supprimé (ou absent)${NC}";
-else 
-    echo -e "${RED}[ERREUR] Fichier de configuration toujours présent${NC}"; 
-fi; 
+
+# On exécute la logique de vérification dans un sous-shell propre
+(
+    VHOST_NAME="${DOMAIN_LOCAL}.conf"
+    VHOST_FILE="/etc/apache2/sites-available/$VHOST_NAME"
+
+    if ! sudo test -f "$VHOST_FILE"; then 
+        echo -e "${GREEN}[OK] Supprimé (ou absent)${NC}";
+    else 
+        # Si le fichier existe, on déclenche le nettoyage (en mode silencieux)
+        echo -e "   -> Nettoyage du VHost résiduel... ";
+
+        sudo a2dissite "$VHOST_NAME" > /dev/null 2>&1
+        sudo rm "$VHOST_FILE" > /dev/null 2>&1
+        
+        # Redémarrage Apache
+        if sudo service apache2 restart > /dev/null 2>&1; then
+            echo -e "${GREEN}Terminé (Désactivé et Supprimé). Apache redémarré.${NC}";
+        else
+            echo -e "${RED}Terminé (Désactivé et Supprimé). Redémarrage Apache ÉCHOUÉ.${NC}";
+        fi
+    fi
+)
 
 echo -e "\n${YELLOW}--- VÉRIFICATION MANUELLE REQUISE (Windows Host) ---${NC}";
 echo -e "Veuillez vérifier que l'entrée pour ${BOLD}$DOMAIN_LOCAL${NC} a été retirée du fichier ${BOLD}C:\Windows\System32\drivers\etc\hosts${NC}."
