@@ -7,6 +7,11 @@ CYAN='\033[0;36m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+# Définir la version de PHP-FPM (Ajustez si nécessaire, ex: php8.1-fpm)
+PHP_FPM_SERVICE="php8.3-fpm"
+PHP_FPM_DISPLAY="PHP-FPM 8.3"
+
+
 # Fonction de vérification robuste à trois états
 check_and_start() {
     local SERVICE_NAME=$1
@@ -43,8 +48,9 @@ check_and_start() {
 
 echo -e "${CYAN}--- DÉMARRAGE DE L'ENVIRONNEMENT DE DÉVELOPPEMENT WSL ---${NC}"
 
-# Lancer la vérification pour Apache et MySQL
+# Lancer la vérification pour Apache, PHP, et MySQL
 check_and_start "apache2" "Apache2"
+check_and_start "$PHP_FPM_SERVICE" "$PHP_FPM_DISPLAY" # <-- AJOUT DE PHP-FPM
 check_and_start "mysql" "MySQL"
 
 echo -e "\n${GREEN}✅ Environnement de développement prêt !${NC}"
@@ -53,7 +59,7 @@ echo "--------------------------------------------------------"
 # --- NOUVEAU MENU DE CONTRÔLE DES SERVICES ---
 
 echo -e "${CYAN}--- CONTRÔLE RAPIDE DES SERVICES ---${NC}"
-read -p "$(echo -e "${CYAN}Que voulez-vous faire ?\n  (1) Redémarrer Apache seul\n  (2) Redémarrer MySQL seul\n  (3) Redémarrer les deux\n  (4) Quitter\nVotre choix (1/2/3/4) : ${NC}")" QUICK_ACTION_SERVICE
+read -p "$(echo -e "${CYAN}Que voulez-vous faire ?\n  (1) Redémarrer Apache seul\n  (2) Redémarrer MySQL seul\n  (3) Redémarrer les trois services principaux\n  (4) Quitter\nVotre choix (1/2/3/4) : ${NC}")" QUICK_ACTION_SERVICE
 
 case "$QUICK_ACTION_SERVICE" in
     1)
@@ -65,9 +71,10 @@ case "$QUICK_ACTION_SERVICE" in
         sudo service mysql restart
         ;;
     3)
-        echo -e "${YELLOW}Redémarrage d'Apache et MySQL...${NC}"
+        echo -e "${YELLOW}Redémarrage d'Apache, MySQL, et PHP-FPM...${NC}"
         sudo service apache2 restart
         sudo service mysql restart
+        sudo service "$PHP_FPM_SERVICE" restart # <-- REDÉMARRAGE DE PHP-FPM
         ;;
     *)
         echo "Opération terminée. Au revoir !"

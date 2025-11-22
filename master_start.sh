@@ -23,23 +23,26 @@ while true; do
     case "$CHOICE" in
         1)
             echo -e "\n${CYAN}>>> Lancement des services (start_dev.sh)...${NC}"
-            ./start_dev.sh
+            if [ -x ./dev-tools/start_dev.sh ]; then 
+                source ./dev-tools/start_dev.sh
+            else
+                echo -e "${RED}ERREUR : Le script start_dev.sh est introuvable ou non exécutable. (Vérifiez le chemin)${NC}"
+            fi
             ;;
         2)
-            # Utilisation de 'source' pour que la commande cd affecte le terminal hôte
             echo -e "\n${CYAN}>>> Lancement de l'installation (setup_projet.sh)...${NC}"
-            if [ -x ./setup_projet.sh ]; then
-                source ./setup_projet.sh
+            if [ -x ./dev-tools/setup_projet.sh ]; then 
+                source ./dev-tools/setup_projet.sh
             else
-                echo -e "${RED}ERREUR : Le script setup_projet.sh est introuvable ou non exécutable.${NC}"
+                echo -e "${RED}ERREUR : Le script setup_projet.sh est introuvable ou non exécutable. (Vérifiez le chemin)${NC}"
             fi
             ;;
         3)
             echo -e "\n${CYAN}>>> Lancement de la désinstallation (teardown_projet.sh)...${NC}"
-            if [ -x ./teardown_projet.sh ]; then
-                ./teardown_projet.sh
+            if [ -x ./dev-tools/teardown_projet.sh ]; then
+                ./dev-tools/teardown_projet.sh
             else
-                echo -e "${RED}ERREUR : Le script teardown_projet.sh est introuvable ou non exécutable.${NC}"
+                echo -e "${RED}ERREUR : Le script teardown_projet.sh est introuvable ou non exécutable. (Vérifiez le chemin)${NC}"
             fi
             ;;
         4)
