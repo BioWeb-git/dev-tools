@@ -31,13 +31,12 @@ Assurez-vous que vos scripts sont dans le même dossier et qu'ils sont exécutab
 # Scripts de Gestion de Projet
 
 ## Prérequis
-chmod +x master_start.sh setup_projet.sh teardown_projet.sh
-Lancement Global
-Démarrer l’environnement et accéder au menu principal :
+```chmod +x master_start.sh setup_projet.sh teardown_projet.sh```
 
-bash
-Copier le code
-./master_start.sh
+Lancement Global
+
+```./dev-tools/master_start.sh```
+
 🔍 Fonctions Détaillées des Scripts
 1. master_start.sh
 Lanceur de Workflow Principal
