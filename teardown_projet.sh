@@ -144,7 +144,7 @@ echo -n "4. Fichier VHost (/etc/apache2/sites-available/) : ";
         echo -e "${GREEN}[OK] Supprimé (ou absent)${NC}";
     else 
         # Si le fichier existe, on déclenche le nettoyage (en mode silencieux)
-        echo -e "   -> Nettoyage du VHost résiduel... ";
+        echo -e "  -> Nettoyage du VHost résiduel... ";
 
         sudo a2dissite "$VHOST_NAME" > /dev/null 2>&1
         sudo rm "$VHOST_FILE" > /dev/null 2>&1
