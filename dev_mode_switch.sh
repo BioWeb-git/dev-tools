@@ -36,7 +36,7 @@ FILE_WATCH_LIST="${CSS_PATH}, ${PROJECTS_DIR}/${PROJECT_NAME}/templates/**/*.htm
 BROWSER_SYNC_CMD_8000="browser-sync start --proxy \"http://127.0.0.1:8000\" --host \"${VHOST_NAME}\" --files \"${FILE_WATCH_LIST}\""
 
 # --- CONFIGURATION MYSQL (CORRIGÉE) ---
-DB_NAME="${PROJECT_NAME}_local" 
+DB_NAME="${PROJECT_NAME//-/_}_local"
 DB_USER="root"
 
 # Commande d'exécution MySQL : utilise root sans mot de passe

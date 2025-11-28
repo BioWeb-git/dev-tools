@@ -31,7 +31,7 @@ echo "--------------------------------------------------------"
 
 # --- 0. DÉFINITION DES VARIABLES (INPUT UTILISATEUR) ---
 
-read -p "$(echo -e "${CYAN}1/3. Quel type de projet souhaitez-vous lancer ?\n  (1) Cloner dépôt existant\n  (2) Créer nouveau à partir de modèle Contao 5\nVotre choix (1/2) : ${NC}")" CHOICE_ACTION
+read -p "$(echo -e "${CYAN}1/3. Quel type de projet souhaitez-vous lancer ?\n  (1) Cloner dépôt existant\n  (2) Créer nouveau à partir de modèle Contao 5\nVotre choix (1/2) : ${NC}")" CHOICE_ACTION
 
 # Vérification que le choix est bien 1 ou 2
 if [[ "$CHOICE_ACTION" != "1" && "$CHOICE_ACTION" != "2" ]]; then
@@ -57,7 +57,7 @@ if [[ "$CHOICE_ACTION" == "1" ]]; then
     # 2. Afficher la liste numérotée
     echo "--------------------------------------------------------"
     for i in "${!REPO_LIST[@]}"; do
-        echo "  $((i+1)). ${REPO_LIST[i]}"
+        echo "  $((i+1)). ${REPO_LIST[i]}"
     done
     echo "--------------------------------------------------------"
 
@@ -85,6 +85,17 @@ if [[ "$CHOICE_ACTION" == "1" ]]; then
     done
     read -p "$(echo -e "${CYAN}3/3. URL Externe (ex: site.bioweb.fr ou www.domaine-client.fr) : ${NC}")" DOMAIN_EXTERNAL
 elif [[ "$CHOICE_ACTION" == "2" ]]; then
+    # --- CORRECTION : SAISIE DU NOM DU PROJET (2/3) ---
+    echo -e "\n${CYAN}2/3. Entrez le nom du nouveau projet (ex: mon-site-client) : ${NC}"
+    read -p "$(echo -e "${CYAN}Nom du projet : ${NC}")" PROJECT_NAME
+    
+    # Validation minimale pour PROJECT_NAME
+    if [[ -z "$PROJECT_NAME" ]]; then
+        echo -e "${RED}Erreur : Le nom du projet ne peut pas être vide. Le script est arrêté.${NC}"
+        exit 1
+    fi
+    # --- FIN DE LA CORRECTION ---
+
     DEFAULT_EXTERNAL="https://${PROJECT_NAME}.bioweb.fr"
     read -p "$(echo -e "${CYAN}3/3. URL Externe (Entrée = ${BOLD}$DEFAULT_EXTERNAL${NC}${CYAN}) : ${NC}")" DOMAIN_EXTERNAL_INPUT
 
@@ -92,7 +103,7 @@ elif [[ "$CHOICE_ACTION" == "2" ]]; then
         DOMAIN_EXTERNAL="$DEFAULT_EXTERNAL"
     else
         DOMAIN_EXTERNAL="$DOMAIN_EXTERNAL_INPUT"
-    fi    
+    fi
 fi
 # --- FIN DU BLOC INTERACTIF ---
 
@@ -103,11 +114,12 @@ PROJECT_NAME_SAFE="${PROJECT_NAME//-/_}"
 DB_NAME="${PROJECT_NAME_SAFE}_local"
 REPO_URL="git@github.com:BioWeb-git/${PROJECT_NAME}.git"
 REPO_FULL_NAME="BioWeb-git/${PROJECT_NAME}"
+APACHE_LOG_DIR="/var/log/apache2"
 
 echo -e "\n${YELLOW}Configuration résumée :${NC}"
-echo -e "${CYAN}  Dossier/Dépôt : $PROJECT_NAME"
-echo -e "  Domaine Local : http://${DOMAIN_LOCAL}"
-echo -e "  Base de données : ${DB_NAME}${NC}"
+echo -e "${CYAN}  Dossier/Dépôt : $PROJECT_NAME"
+echo -e "  Domaine Local : http://${DOMAIN_LOCAL}"
+echo -e "  Base de données : ${DB_NAME}${NC}"
 echo "--------------------------------------------------------"
 
 
@@ -120,36 +132,37 @@ echo -e "\n${CYAN}--- 1. Acquisition du code et gestion des conflits ---${NC}"
 # 1.1. Gestion du Dossier du Projet (Clonage ou Pull/Création)
 SHOULD_CLONE=true
 CODE_ACQUIRED=false
-    
+
 if [ -d "$PROJECT_NAME" ]; then
     echo -e "${YELLOW}⚠️ Le dossier $PROJECT_NAME existe déjà localement.${NC}"
+    
+    # 1. Choix du mode (s/a ou s/p/a)
     if [[ "$CHOICE_ACTION" == "2" ]]; then
         read -p "$(echo -e "${CYAN}Voulez-vous le (s)upprimer et recréer ou (a)nnuler ?\nVotre choix (s/a) : ${NC}")" CHOICE_PROJECT
     else
         read -p "$(echo -e "${CYAN}Voulez-vous le (s)upprimer, (p)ull (mettre à jour), ou (a)nnuler ?\nVotre choix (s/p/a) : ${NC}")" CHOICE_PROJECT
     fi
     
-    # --- DÉBUT DU BLOC D'ACTION INTÉGRÉ (Remplacement de la partie défectueuse) ---
+    # 2. Exécution de l'action
     if [[ "$CHOICE_PROJECT" == "s" ]]; then
-        echo "   Suppression forcée du dossier..."
+        echo "   Suppression forcée du dossier..."
         sudo rm -rf "$PROJECT_NAME"
     
     elif [[ "$CHOICE_PROJECT" == "p" && "$CHOICE_ACTION" != "2" ]]; then
-        echo "   Mise à jour via git pull..."
+        echo "   Mise à jour via git pull..."
         cd "$PROJECT_NAME"
         git pull
         CODE_ACQUIRED=true
         cd ..
     
-    elif [[ "$CHOICE_PROJECT" == "a" ]]; then # ✅ Gère explicitement l'annulation demandée
+    elif [[ "$CHOICE_PROJECT" == "a" ]]; then
         echo -e "${RED}Opération annulée par l'utilisateur. Le script s'arrête.${NC}"
         exit 0
     
-    else # ✅ Gère toutes les entrées invalides (ex: 'x')
+    else
         echo -e "${RED}Choix non reconnu ou action non permise. Le script est arrêté.${NC}"
         exit 1
-    fi # <-- Ferme le IF des actions sur le dossier existant
-
+    fi
 fi
 
 # Si le code n'est PAS acquis (acquisition nécessaire)
@@ -157,7 +170,7 @@ if [ "$CODE_ACQUIRED" = false ]; then
     
     if [[ "$CHOICE_ACTION" == "2" ]]; then
         # OPTION 2: Création d'un nouveau dépôt à partir du modèle
-        echo "   Création du dépôt '$PROJECT_NAME' sur GitHub..."
+        echo "   Création du dépôt '$PROJECT_NAME' sur GitHub..."
         
         if gh repo view "$REPO_FULL_NAME" > /dev/null 2>&1; then
             echo -e "${RED}⚠️ Le dépôt $REPO_FULL_NAME existe déjà sur GitHub.${NC}"
@@ -170,21 +183,21 @@ if [ "$CODE_ACQUIRED" = false ]; then
             fi
             
         else
-            echo "   Dépôt distant non trouvé. Création lancée..."
+            echo "   Dépôt distant non trouvé. Création lancée..."
             gh repo create "BioWeb-git/$PROJECT_NAME" --public --template BioWeb-git/contao5
             
             # Polling pour gérer la condition de course (template copy)
-            echo "   Vérification et attente que le modèle soit prêt (polling)..."
+            echo "   Vérification et attente que le modèle soit prêt (polling)..."
             until git ls-remote "${REPO_URL}" main | grep -q 'refs/heads/main'; do
-                echo "   Template en cours de copie... Attente de 5 secondes."
+                echo "   Template en cours de copie... Attente de 5 secondes."
                 sleep 5
             done
-            echo -e "${GREEN}   Modèle copié. Dépôt prêt pour le clonage.${NC}"
+            echo -e "${GREEN}   Modèle copié. Dépôt prêt pour le clonage.${NC}"
         fi
         
     elif [[ "$CHOICE_ACTION" == "1" ]]; then
         # OPTION 1: Clonage d'un dépôt existant
-        echo "   Clonage du dépôt existant : ${REPO_URL}..."
+        echo "   Clonage du dépôt existant : ${REPO_URL}..."
     
     # Note: La vérification que CHOICE_ACTION soit 1 ou 2 est faite au tout début.
     fi
@@ -192,7 +205,7 @@ fi
 
 # Exécution unique du clonage après toutes les vérifications / créations
 if [ "$SHOULD_CLONE" = true ] && [ "$CODE_ACQUIRED" = false ]; then
-    echo "   Clonage local..."
+    echo "   Clonage local..."
     git clone "${REPO_URL}" "$PROJECT_NAME"
     CODE_ACQUIRED=true
 fi
@@ -207,17 +220,17 @@ if [ -n "$DB_EXISTS" ]; then
     read -p "$(echo -e "${CYAN}Voulez-vous la (r)ecréer (supprimer/recréer) ou la (g)arder ?\nVotre choix (r/g) : ${NC}")" CHOICE_DB
 
     if [[ "$CHOICE_DB" == "r" ]]; then
-        echo "   Recréation forcée de la base de données..."
+        echo "   Recréation forcée de la base de données..."
         sudo mysql <<EOF_SQL
 DROP DATABASE IF EXISTS ${DB_NAME};
 CREATE DATABASE ${DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 FLUSH PRIVILEGES;
 EOF_SQL
     else
-        echo "   Base de données existante conservée."
+        echo "   Base de données existante conservée."
     fi
 else
-    echo "   Création initiale de la base de données..."
+    echo "   Création initiale de la base de données..."
     sudo mysql <<EOF_SQL
 CREATE DATABASE ${DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 FLUSH PRIVILEGES;
@@ -243,14 +256,14 @@ if [ -f ".env" ]; then
     read -p "$(echo -e "${CYAN}Voulez-vous l'(e)craser ou le (g)arder ?\nVotre choix (e/g) : ${NC}")" CHOICE_ENV
 
     if [[ "$CHOICE_ENV" == "g" ]]; then
-        echo "   Fichier .env existant conservé."
+        echo "   Fichier .env existant conservé."
         WRITE_FILE=false
     fi
 fi
 
 # 2. Écriture effective du fichier
 if [ "$WRITE_FILE" = true ]; then
-    echo "   Création/Écrasement du fichier .env..."
+    echo "   Création/Écrasement du fichier .env..."
     
     cat > .env <<EOF_ENV
 # --- Environnement local du développeur ---
@@ -272,18 +285,19 @@ fi
 echo -e "\n${CYAN}--- Installation des dépendances et ACLs...${NC}"
 
 # 2.1. Installation des dépendances (avec feedback visuel)
-echo "   Installation des dépendances... (cela peut prendre quelques minutes)"
+echo "   Installation des dépendances... (cela peut prendre quelques minutes)"
 composer install --no-dev --no-progress --no-ansi --no-interaction --optimize-autoloader --prefer-dist &
 spinner $!
 echo -e "${GREEN}Dependencies installées.${NC}"
 
 # 2.2. Application des ACLs (Permissions)
-echo "   Application des permissions ACLs..."
+echo "   Application des permissions ACLs..."
+sudo chown -R pouet:www-data .
 sudo setfacl -R -m u:www-data:rwX -m u:pouet:rwX .
 sudo setfacl -dR -m u:www-data:rwX -m u:pouet:rwX .
 
 # 2.3. Restauration du schéma de la BDD et migration (avec feedback)
-echo "   Restauration et migration de la base de données..."
+echo "   Restauration et migration de la base de données..."
 {
     php vendor/bin/contao-console contao:backup:restore -n
     echo 2 | php vendor/bin/contao-console contao:migrate --no-backup -n
@@ -298,7 +312,7 @@ echo -e "${GREEN}Migration terminée.${NC}"
 echo -e "\n${CYAN}--- Configuration Apache...${NC}"
 
 # 3.1. Création du fichier Virtual Host
-echo "   Création du Virtual Host pour ${DOMAIN_LOCAL}..."
+echo "   Création du Virtual Host pour ${DOMAIN_LOCAL}..."
 sudo cat <<EOF_VH | sudo tee /etc/apache2/sites-available/${DOMAIN_LOCAL}.conf > /dev/null
 <VirtualHost *:80>
     ServerName ${DOMAIN_LOCAL}
@@ -309,34 +323,33 @@ sudo cat <<EOF_VH | sudo tee /etc/apache2/sites-available/${DOMAIN_LOCAL}.conf >
         AllowOverride All
         Require all granted
     </Directory>
-    ErrorLog ${APACHE_LOG_DIR}/error.log
-    CustomLog ${APACHE_LOG_DIR}/access.log combined
+    ErrorLog ${APACHE_LOG_DIR}/${PROJECT_NAME}-error.log
+    CustomLog ${APACHE_LOG_DIR}/${PROJECT_NAME}-access.log combined
 </VirtualHost>
 EOF_VH
 
 # 3.2. Activation du site et redémarrage du serveur
-echo "   Activation du site et redémarrage d'Apache..."
+echo "   Activation du site et redémarrage d'Apache..."
 sudo a2ensite ${DOMAIN_LOCAL}.conf
 sudo a2dissite 000-default.conf
 sudo service apache2 restart &
 spinner $!
 echo -e "${GREEN}Apache redémarré.${NC}"
 
-
 # 2.4. Finalisation du nouveau dépôt et Push (Uniquement si CHOICE_ACTION est 2)
 if [[ "$CHOICE_ACTION" == "2" ]]; then
     echo -e "\n${GREEN}--- Finalisation du nouveau dépôt GitHub (First commit) ---${NC}"
 
-    echo "   1. Création de la sauvegarde initiale de la base de données..."
+    echo "   1. Création de la sauvegarde initiale de la base de données..."
     php vendor/bin/contao-console contao:backup:create
 
-    echo "   2. Commit des fichiers d'installation..."
+    echo "   2. Commit des fichiers d'installation..."
     git add .
     git commit -m "Initial setup from template, ready for development."
 
-    echo "   3. Pousse vers GitHub..."
+    echo "   3. Pousse vers GitHub..."
     git push origin main
-    echo -e "${GREEN}   ✅ Dépôt initialisé et poussé.${NC}"
+    echo -e "${GREEN}   ✅ Dépôt initialisé et poussé.${NC}"
 fi
 
 cd ..
@@ -354,7 +367,7 @@ echo -e "${CYAN}1. Récupère l'adresse IP actuelle de ton WSL en lançant :${NC
 echo -e "${CYAN}2. Ouvre le Bloc-notes en MODE ADMINISTRATEUR.${NC}"
 echo -e "${CYAN}3. Ouvre le fichier C:\Windows\System32\drivers\etc\hosts${NC}"
 echo -e "${CYAN}4. Ajoute la ligne suivante (utilise l'IP que tu as récupérée à l'étape 1) :${NC}"
-echo -e "   [TON_IP_WSL]   ${DOMAIN_LOCAL}"
-echo -e "${CYAN}Exemple : 172.28.112.1   ${DOMAIN_LOCAL}${NC}"
+echo -e "   [TON_IP_WSL]   ${DOMAIN_LOCAL}"
+echo -e "${CYAN}Exemple : ::1   ${DOMAIN_LOCAL}${NC}"
 echo -e "${CYAN}5. Redémarre ton navigateur et accède à : ${BOLD}http://${DOMAIN_LOCAL}${NC}"
 echo -e "${BOLD}====================================================================================${NC}"
