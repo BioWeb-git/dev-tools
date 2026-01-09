@@ -290,9 +290,20 @@ composer install --no-dev --no-progress --no-ansi --no-interaction --optimize-au
 spinner $!
 echo -e "${GREEN}Dependencies installées.${NC}"
 
-# 2.2. Application des ACLs (Permissions)
-echo "   Application des permissions ACLs..."
+# 2.2. Application des permissions et héritage du groupe (Sticky Bit)
+echo "   Application des permissions et gestion de l'héritage du groupe..."
+
+# On s'assure que tout appartient à ton utilisateur 'pouet' et au groupe 'www-data'
 sudo chown -R pouet:www-data .
+
+# On donne les droits d'écriture au groupe (pour que le Manager puisse agir)
+sudo chmod -R 775 .
+
+# LE POINT CLÉ : On force l'héritage du groupe www-data sur tous les futurs dossiers/fichiers
+# (Le Sticky Bit sur le groupe)
+sudo find . -type d -exec chmod g+s {} +
+
+# Optionnel : On garde les ACLs en complément pour la sécurité des accès
 sudo setfacl -R -m u:www-data:rwX -m u:pouet:rwX .
 sudo setfacl -dR -m u:www-data:rwX -m u:pouet:rwX .
 
