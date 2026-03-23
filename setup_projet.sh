@@ -10,6 +10,10 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 BOLD='\033[1m'
 
+# --- CONFIGURATION (TOKEN GITHUB) ---
+# Le jeton est lu depuis un fichier externe pour éviter de l'exposer dans Git
+GITHUB_PAT=$(cat ~/.gh_token 2>/dev/null || echo "")
+
 # Fonction de spinner (pour feedback visuel)
 spinner() {
     local pid=$1
@@ -224,6 +228,7 @@ if [ -n "$DB_EXISTS" ]; then
         sudo mysql <<EOF_SQL
 DROP DATABASE IF EXISTS ${DB_NAME};
 CREATE DATABASE ${DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO 'root'@'localhost';
 FLUSH PRIVILEGES;
 EOF_SQL
     else
@@ -233,6 +238,7 @@ else
     echo "   Création initiale de la base de données..."
     sudo mysql <<EOF_SQL
 CREATE DATABASE ${DB_NAME} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO 'root'@'localhost';
 FLUSH PRIVILEGES;
 EOF_SQL
 fi
@@ -269,13 +275,34 @@ if [ "$WRITE_FILE" = true ]; then
 # --- Environnement local du développeur ---
 APP_ENV=dev
 APP_SECRET="fOhPbKiWWImKQjOjyjiwFAj85ChaRUPr2ROETpO9lLeP9EjIPKWSHCm1SuWFlJkK"
-DATABASE_URL="mysql://root:@127.0.0.1:3306/${DB_NAME}?serverVersion=8.0"
+DATABASE_URL="mysql://root:@127.0.0.1:3306/${DB_NAME}?serverVersion=mariadb-10.11.14"
 MAILER_TRANSPORT_MAILTRAP="smtp://b9d7f854abecb6:06f11e8524f487@smtp.mailtrap.io:2525"
 MAILER_TRANSPORT_MAILJET="smtp://a631077a5dfab1a416d3af197905e94f:0da4f04bb1bd337f5e33506702b47688@in-v3.mailjet.com:25"
 ROUTER_REQUEST_CONTEXT_HOST="${DOMAIN_LOCAL}"
 ROUTER_REQUEST_CONTEXT_SCHEME="http"
 DNS_MAPPING='$(echo "$FINAL_JSON")'
 EOF_ENV
+fi
+
+# 1.4. Création du fichier auth.json (Authentification GitHub pour les bundles privés)
+echo -e "\n${CYAN}--- 4. Configuration de l'authentification GitHub (auth.json) ---${NC}"
+if [ -n "$GITHUB_PAT" ]; then
+    echo "   Génération du fichier auth.json..."
+    cat > auth.json <<EOF_AUTH
+{
+    "github-oauth": {
+        "github.com": "$GITHUB_PAT"
+    }
+}
+EOF_AUTH
+    
+    # Sécurité : Si auth.json n'est pas dans le .gitignore, on l'ajoute
+    if ! grep -q "auth.json" .gitignore 2>/dev/null; then
+        echo "   Ajout de auth.json au .gitignore..."
+        echo "/auth.json" >> .gitignore
+    fi
+else
+    echo -e "${YELLOW}⚠️ Aucun GITHUB_PAT défini dans le script. Pensez à le configurer si nécessaire.${NC}"
 fi
 
 # -----------------------------------------------------------------------
