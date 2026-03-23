@@ -30,6 +30,9 @@ spinner() {
 }
 
 # -----------------------------------------------------------------------
+# On s'assure de démarrer depuis le dossier personnel pour éviter de cloner dans n'importe quel sous-dossier
+cd "$HOME"
+
 echo -e "${CYAN}## 🚀 DÉMARRAGE DE L'ASSISTANT CONTAO LOCAL ##${NC}"
 echo "--------------------------------------------------------"
 
@@ -119,6 +122,7 @@ DB_NAME="${PROJECT_NAME_SAFE}_local"
 REPO_URL="git@github.com:BioWeb-git/${PROJECT_NAME}.git"
 REPO_FULL_NAME="BioWeb-git/${PROJECT_NAME}"
 APACHE_LOG_DIR="/var/log/apache2"
+USER_HOME="$HOME"
 
 echo -e "\n${YELLOW}Configuration résumée :${NC}"
 echo -e "${CYAN}  Dossier/Dépôt : $PROJECT_NAME"
@@ -355,9 +359,9 @@ sudo cat <<EOF_VH | sudo tee /etc/apache2/sites-available/${DOMAIN_LOCAL}.conf >
 <VirtualHost *:80>
     ServerName ${DOMAIN_LOCAL}
     ServerAdmin webmaster@localhost
-    DocumentRoot /home/pouet/${PROJECT_NAME}/public
+    DocumentRoot ${USER_HOME}/${PROJECT_NAME}/public
     
-    <Directory /home/pouet/${PROJECT_NAME}/public>
+    <Directory ${USER_HOME}/${PROJECT_NAME}/public>
         AllowOverride All
         Require all granted
     </Directory>
