@@ -36,7 +36,23 @@ cd "$HOME"
 echo -e "${CYAN}## 🚀 DÉMARRAGE DE L'ASSISTANT CONTAO LOCAL ##${NC}"
 echo "--------------------------------------------------------"
 
-# --- 0. DÉFINITION DES VARIABLES (INPUT UTILISATEUR) ---
+# --- 0. MENU DE SÉLECTION ---
+echo -e "${CYAN}Quel type d'exécution souhaitez-vous ?${NC}"
+echo -e "  0. Tout lancer (défaut)"
+echo -e "  1. Acquisition du code (Action 1/2 + Sélection dépôt)"
+echo -e "  2. Gestion Base de données"
+echo -e "  3. Configuration .env"
+echo -e "  4. Configuration Auth GitHub (auth.json)"
+echo -e "  5. Installations (Composer)"
+echo -e "  6. Permissions et ACLs"
+echo -e "  7. Migration BDD"
+echo -e "  8. Synchronisation Rsync"
+echo -e "  9. Configuration Apache"
+read -p "Votre choix [0-9] (Entrée = 0) : " STEP_CHOICE
+[ -z "$STEP_CHOICE" ] && STEP_CHOICE=0
+
+# --- 1. DÉFINITION DES VARIABLES (INPUT UTILISATEUR) ---
+if [[ "$STEP_CHOICE" == "0" || "$STEP_CHOICE" == "1" ]]; then
 
 read -p "$(echo -e "${CYAN}1/3. Quel type de projet souhaitez-vous lancer ?\n  (1) Cloner dépôt existant\n  (2) Créer nouveau à partir de modèle Contao 5\nVotre choix (1/2) : ${NC}")" CHOICE_ACTION
 
@@ -112,7 +128,41 @@ elif [[ "$CHOICE_ACTION" == "2" ]]; then
         DOMAIN_EXTERNAL="$DOMAIN_EXTERNAL_INPUT"
     fi
 fi
-# --- FIN DU BLOC INTERACTIF ---
+fi
+
+# Si on a sauté l'étape 1, on essaie de deviner PROJECT_NAME s'il n'est pas là
+if [ -z "$PROJECT_NAME" ] && [ "$STEP_CHOICE" -gt 1 ]; then
+    echo -e "${YELLOW}PROJECT_NAME non défini. Voici les dossiers locaux :${NC}"
+    LOCAL_DIRS=($(ls -d */ | sed 's/\///' | head -n 10))
+    for i in "${!LOCAL_DIRS[@]}"; do
+        echo "  $((i+1)). ${LOCAL_DIRS[i]}"
+    done
+    while true; do
+        read -p "Entrez le NUMÉRO du dossier projet : " DIR_CHOICE
+        if [[ "$DIR_CHOICE" =~ ^[0-9]+$ ]] && [ "$DIR_CHOICE" -ge 1 ] && [ "$DIR_CHOICE" -le "${#LOCAL_DIRS[@]}" ]; then
+            PROJECT_NAME="${LOCAL_DIRS[$((DIR_CHOICE - 1))]}"
+            break
+        fi
+        echo -e "${RED}Choix invalide.${NC}"
+    done
+fi
+
+# Dérivation des variables (toujours nécessaire)
+if [ -n "$PROJECT_NAME" ]; then
+    DOMAIN_LOCAL="${PROJECT_NAME}.test"
+    PROJECT_NAME_SAFE="${PROJECT_NAME//-/_}"
+    DB_NAME="${PROJECT_NAME_SAFE}_local"
+    REPO_URL="git@github.com:BioWeb-git/${PROJECT_NAME}.git"
+    USER_HOME="$HOME"
+fi
+
+# On entre dans le dossier projet s'il existe déjà (important pour les étapes modulaires)
+if [ -d "$PROJECT_NAME" ]; then
+    cd "$PROJECT_NAME"
+fi
+
+# --- 2. ACQUISITION DU CODE ---
+if [[ "$STEP_CHOICE" == "0" || "$STEP_CHOICE" == "1" ]]; then
 
 
 # Dérivation des variables internes
@@ -213,13 +263,15 @@ fi
 
 # Exécution unique du clonage après toutes les vérifications / créations
 if [ "$SHOULD_CLONE" = true ] && [ "$CODE_ACQUIRED" = false ]; then
-    echo "   Clonage local..."
     git clone "${REPO_URL}" "$PROJECT_NAME"
     CODE_ACQUIRED=true
 fi
 
 
-# 1.2. Création de la base de données (Root est configuré)
+fi
+
+# --- 3. GESTION DE LA BDD ---
+if [[ "$STEP_CHOICE" == "0" || "$STEP_CHOICE" == "2" ]]; then
 echo -e "\n${CYAN}--- 2. Gestion de la Base de Données ---${NC}"
 DB_EXISTS=$(sudo mysql -N -s -e "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = '${DB_NAME}'")
 
@@ -250,7 +302,10 @@ fi
 # On se place dans le dossier du projet pour la suite
 cd "$PROJECT_NAME"
 
-# 1.3. Création du fichier .env (Gestion de l'écrasement)
+fi
+
+# --- 4. CONFIGURATION .ENV ---
+if [[ "$STEP_CHOICE" == "0" || "$STEP_CHOICE" == "3" ]]; then
 echo -e "\n${CYAN}--- 3. Configuration du fichier .env ---${NC}"
 
 # 1. Définir le contenu de la chaîne de MAPPING selon le choix
@@ -288,7 +343,10 @@ DNS_MAPPING='$(echo "$FINAL_JSON")'
 EOF_ENV
 fi
 
-# 1.4. Création du fichier auth.json (Authentification GitHub pour les bundles privés)
+fi
+
+# --- 5. CONFIGURATION AUTH GITHUB ---
+if [[ "$STEP_CHOICE" == "0" || "$STEP_CHOICE" == "4" ]]; then
 echo -e "\n${CYAN}--- 4. Configuration de l'authentification GitHub (auth.json) ---${NC}"
 if [ -n "$GITHUB_PAT" ]; then
     echo "   Génération du fichier auth.json..."
@@ -309,9 +367,10 @@ else
     echo -e "${YELLOW}⚠️ Aucun GITHUB_PAT défini dans le script. Pensez à le configurer si nécessaire.${NC}"
 fi
 
-# -----------------------------------------------------------------------
-## ⚙️ ÉTAPE 2 : INSTALLATION ET MIGRATION ##
-# -----------------------------------------------------------------------
+fi
+
+# --- 6. INSTALLATION DES DÉPENDANCES ---
+if [[ "$STEP_CHOICE" == "0" || "$STEP_CHOICE" == "5" ]]; then
 
 echo -e "\n${CYAN}--- Installation des dépendances et ACLs...${NC}"
 
@@ -321,7 +380,10 @@ composer install --no-dev --no-progress --no-ansi --no-interaction --optimize-au
 spinner $!
 echo -e "${GREEN}Dependencies installées.${NC}"
 
-# 2.2. Application des permissions et héritage du groupe (Sticky Bit)
+fi
+
+# --- 7. PERMISSIONS ET ACLS ---
+if [[ "$STEP_CHOICE" == "0" || "$STEP_CHOICE" == "6" ]]; then
 echo "   Application des permissions et gestion de l'héritage du groupe..."
 
 # On s'assure que tout appartient à ton utilisateur 'pouet' et au groupe 'www-data'
@@ -338,7 +400,10 @@ sudo find . -type d -exec chmod g+s {} +
 sudo setfacl -R -m u:www-data:rwX -m u:pouet:rwX .
 sudo setfacl -dR -m u:www-data:rwX -m u:pouet:rwX .
 
-# 2.3. Restauration du schéma de la BDD et migration (avec feedback)
+fi
+
+# --- 8. RESTAURATION ET MIGRATION BDD ---
+if [[ "$STEP_CHOICE" == "0" || "$STEP_CHOICE" == "7" ]]; then
 echo "   Restauration et migration de la base de données..."
 {
     php vendor/bin/contao-console contao:backup:restore -n
@@ -347,9 +412,24 @@ echo "   Restauration et migration de la base de données..."
 spinner $!
 echo -e "${GREEN}Migration terminée.${NC}"
 
-# -----------------------------------------------------------------------
-## 🖥️ ÉTAPE 3 : CONFIGURATION APACHE ET FINALISATION ##
-# -----------------------------------------------------------------------
+fi
+
+# --- 9. SYNCHRONISATION DES FICHIERS ---
+if [[ "$STEP_CHOICE" == "0" || "$STEP_CHOICE" == "8" ]]; then
+echo -e "\n${CYAN}--- Synchronisation des fichiers (optionnel)...${NC}"
+read -p "$(echo -e "${YELLOW}Voulez-vous synchroniser le dossier /files depuis la production ? (y/n) : ${NC}")" DO_SYNC
+if [[ "$DO_SYNC" == "y" ]]; then
+    read -p "$(echo -e "${YELLOW}Domaine de production (ex: example.com) : ${NC}")" PROD_DOMAIN
+    RSYNC_CMD="rsync -avz forge@54.37.23.174:/home/forge/www.${PROD_DOMAIN}/files/ ./files/"
+    echo -e "Commande suggérée : ${CYAN}$RSYNC_CMD${NC}"
+    read -p "Appuyez sur [ENTRÉE] pour lancer la synchro ou Ctrl+C pour annuler..."
+    eval $RSYNC_CMD
+fi
+
+fi
+
+# --- 10. CONFIGURATION APACHE ---
+if [[ "$STEP_CHOICE" == "0" || "$STEP_CHOICE" == "9" ]]; then
 
 echo -e "\n${CYAN}--- Configuration Apache...${NC}"
 
@@ -378,7 +458,10 @@ sudo service apache2 restart &
 spinner $!
 echo -e "${GREEN}Apache redémarré.${NC}"
 
-# 2.4. Finalisation du nouveau dépôt et Push (Uniquement si CHOICE_ACTION est 2)
+fi
+
+# --- 11. FINALISATION GITHUB ---
+if [[ "$STEP_CHOICE" == "0" ]]; then
 if [[ "$CHOICE_ACTION" == "2" ]]; then
     echo -e "\n${GREEN}--- Finalisation du nouveau dépôt GitHub (First commit) ---${NC}"
 
@@ -392,6 +475,7 @@ if [[ "$CHOICE_ACTION" == "2" ]]; then
     echo "   3. Pousse vers GitHub..."
     git push origin main
     echo -e "${GREEN}   ✅ Dépôt initialisé et poussé.${NC}"
+fi
 fi
 
 cd ..
