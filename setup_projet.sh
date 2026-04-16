@@ -154,11 +154,13 @@ if [ -n "$PROJECT_NAME" ]; then
     DB_NAME="${PROJECT_NAME_SAFE}_local"
     REPO_URL="git@github.com:BioWeb-git/${PROJECT_NAME}.git"
     USER_HOME="$HOME"
+    # Chemin absolu du projet
+    PROJECT_DIR="${USER_HOME}/${PROJECT_NAME}"
 fi
 
-# On entre dans le dossier projet s'il existe déjà (important pour les étapes modulaires)
-if [ -d "$PROJECT_NAME" ]; then
-    cd "$PROJECT_NAME"
+# On se place dans le dossier projet s'il existe déjà
+if [ -d "$PROJECT_DIR" ]; then
+    cd "$PROJECT_DIR"
 fi
 
 # --- 2. ACQUISITION DU CODE ---
@@ -262,9 +264,9 @@ if [ "$CODE_ACQUIRED" = false ]; then
 fi
 
 # Exécution unique du clonage après toutes les vérifications / créations
-if [ "$SHOULD_CLONE" = true ] && [ "$CODE_ACQUIRED" = false ]; then
-    git clone "${REPO_URL}" "$PROJECT_NAME"
+    git clone "${REPO_URL}" "$PROJECT_DIR"
     CODE_ACQUIRED=true
+    cd "$PROJECT_DIR"
 fi
 
 
@@ -299,9 +301,7 @@ FLUSH PRIVILEGES;
 EOF_SQL
 fi
 
-# On se place dans le dossier du projet pour la suite
-cd "$PROJECT_NAME"
-
+# Pas besoin de cd ici, on y est déjà ou on vient d'y entrer
 fi
 
 # --- 4. CONFIGURATION .ENV ---
