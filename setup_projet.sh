@@ -264,6 +264,7 @@ if [ "$CODE_ACQUIRED" = false ]; then
 fi
 
 # Exécution unique du clonage après toutes les vérifications / créations
+if [ "$SHOULD_CLONE" = true ] && [ "$CODE_ACQUIRED" = false ]; then
     git clone "${REPO_URL}" "$PROJECT_DIR"
     CODE_ACQUIRED=true
     cd "$PROJECT_DIR"
