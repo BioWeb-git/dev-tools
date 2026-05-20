@@ -48,7 +48,8 @@ echo -e "  6. Permissions et ACLs"
 echo -e "  7. Migration BDD"
 echo -e "  8. Synchronisation Rsync"
 echo -e "  9. Configuration Apache"
-read -p "Votre choix [0-9] (Entrée = 0) : " STEP_CHOICE
+echo -e "  10. Déployer le système d'agent IA (Symlinks + Context)"
+read -p "Votre choix [0-10] (Entrée = 0) : " STEP_CHOICE
 [ -z "$STEP_CHOICE" ] && STEP_CHOICE=0
 
 # --- 1. DÉFINITION DES VARIABLES (INPUT UTILISATEUR) ---
@@ -106,7 +107,7 @@ if [[ "$CHOICE_ACTION" == "1" ]]; then
             echo -e "${RED}Choix invalide. Veuillez entrer un numéro valide ou 'a'.${NC}"
         fi
     done
-    read -p "$(echo -e "${CYAN}3/3. URL Externe (ex: site.bioweb.fr ou www.domaine-client.fr) : ${NC}")" DOMAIN_EXTERNAL
+    read -p "$(echo -e "${CYAN}3/3. Domaine Externe (ex: site.bioweb.fr ou www.domaine-client.fr) : ${NC}")" DOMAIN_EXTERNAL
 elif [[ "$CHOICE_ACTION" == "2" ]]; then
     # --- CORRECTION : SAISIE DU NOM DU PROJET (2/3) ---
     echo -e "\n${CYAN}2/3. Entrez le nom du nouveau projet (ex: mon-site-client) : ${NC}"
@@ -119,8 +120,8 @@ elif [[ "$CHOICE_ACTION" == "2" ]]; then
     fi
     # --- FIN DE LA CORRECTION ---
 
-    DEFAULT_EXTERNAL="https://${PROJECT_NAME}.bioweb.fr"
-    read -p "$(echo -e "${CYAN}3/3. URL Externe (Entrée = ${BOLD}$DEFAULT_EXTERNAL${NC}${CYAN}) : ${NC}")" DOMAIN_EXTERNAL_INPUT
+    DEFAULT_EXTERNAL="${PROJECT_NAME}.bioweb.fr"
+    read -p "$(echo -e "${CYAN}3/3. Domaine Externe (Entrée = ${BOLD}$DEFAULT_EXTERNAL${NC}${CYAN}) : ${NC}")" DOMAIN_EXTERNAL_INPUT
 
     if [[ -z "$DOMAIN_EXTERNAL_INPUT" ]]; then
         DOMAIN_EXTERNAL="$DEFAULT_EXTERNAL"
@@ -156,6 +157,9 @@ if [ -n "$PROJECT_NAME" ]; then
     USER_HOME="$HOME"
     # Chemin absolu du projet
     PROJECT_DIR="${USER_HOME}/${PROJECT_NAME}"
+    # Nettoyage et Fallback pour DOMAIN_EXTERNAL (si étape 3 lancée seule ou saisie incomplète)
+    DOMAIN_EXTERNAL=$(echo "$DOMAIN_EXTERNAL" | sed -e 's|^https\?://||')
+    [ -z "$DOMAIN_EXTERNAL" ] && DOMAIN_EXTERNAL="${PROJECT_NAME}.bioweb.fr"
 fi
 
 # On se place dans le dossier projet s'il existe déjà
@@ -309,12 +313,9 @@ fi
 if [[ "$STEP_CHOICE" == "0" || "$STEP_CHOICE" == "3" ]]; then
 echo -e "\n${CYAN}--- 3. Configuration du fichier .env ---${NC}"
 
-# 1. Définir le contenu de la chaîne de MAPPING selon le choix
-if [[ "$CHOICE_ACTION" == "2" ]]; then
-    FINAL_JSON='{"contao5.test":"http://'${DOMAIN_LOCAL}'","'${DOMAIN_EXTERNAL}'":"http://'${DOMAIN_LOCAL}'"}'
-else
-    FINAL_JSON='{"'${DOMAIN_EXTERNAL}'":"http://'${DOMAIN_LOCAL}'"}'
-fi
+# 1. Définir le contenu de la chaîne de MAPPING
+# On inclut systématiquement la clé vide (fallback), contao5.test (modèle) et le domaine externe.
+FINAL_JSON='{"":"http://'${DOMAIN_LOCAL}'","contao5.test":"http://'${DOMAIN_LOCAL}'","'${DOMAIN_EXTERNAL}'":"http://'${DOMAIN_LOCAL}'"}'
 
 WRITE_FILE=true
 if [ -f ".env" ]; then
@@ -460,8 +461,55 @@ spinner $!
 echo -e "${GREEN}Apache redémarré.${NC}"
 
 fi
+# --- 11. DÉPLOIEMENT AGENT IA ---
+if [[ "$STEP_CHOICE" == "0" || "$STEP_CHOICE" == "10" ]]; then
+    echo -e "\n${CYAN}--- 10. Déploiement du système d'agent IA ---${NC}"
+    AGENT_DIR="${USER_HOME}/dev-tools/agent"
+    
+    if [ -d "$AGENT_DIR" ]; then
+        echo "   Création des liens symboliques vers les règles et modèles..."
+        ln -sf "${AGENT_DIR}/RULES.global.md" "RULES.global.md"
+        ln -sfn "${AGENT_DIR}/templates" ".dev-tools-templates"
+        ln -sfn "${AGENT_DIR}/docs" ".dev-tools-docs"
+        
+        echo "   Déploiement du contexte projet Contao 5..."
+        if [ ! -f "context.md" ]; then
+            if [ -f "${AGENT_DIR}/templates/examples/context_contao5.md" ]; then
+                cp "${AGENT_DIR}/templates/examples/context_contao5.md" "context.md"
+                echo "     Fichier context.md créé à partir du modèle Contao 5."
+            else
+                echo -e "${YELLOW}⚠️ Modèle context_contao5.md introuvable, utilisation du template par défaut.${NC}"
+                cp "${AGENT_DIR}/templates/context_template.md" "context.md"
+            fi
+        else
+            echo "     Le fichier context.md existe déjà. Non écrasé."
+        fi
+        
+        echo "   Génération du prompt actif personnalisé (prompt_active.md)..."
+        sed -e "s|\[INSERT: RULES.global.md path or link\]|${PROJECT_DIR}/RULES.global.md|g" \
+            -e "s|\[INSERT: context.md path, e.g., /home/pouet/docs/context-contao5.md\]|${PROJECT_DIR}/context.md|g" \
+            -e "s|\[INSERT: local api docs path, e.g., /home/pouet/docs/api/\]|${PROJECT_DIR}/.dev-tools-docs/|g" \
+            "${AGENT_DIR}/templates/prompt_master.md" > prompt_active.md
+        
+        echo "   Mise à jour du fichier .gitignore..."
+        # On s'assure d'exclure les dossiers d'aide, les prompts actifs et les logs générés
+        for rule in ".dev-tools-templates" ".dev-tools-docs" "task.md" "walkthrough.md" "implementation_plan.md" "prompt_active.md"; do
+            if ! grep -q "^$rule" .gitignore 2>/dev/null; then
+                echo "$rule" >> .gitignore
+            fi
+        done
+        echo -e "${GREEN}   ✅ Système d'agent IA déployé avec succès !${NC}"
+        echo "--------------------------------------------------------"
+        echo -e "${YELLOW}${BOLD}   👉 ÉTAPE SUIVANTE POUR L'IA :${NC}"
+        echo -e "     Ouvrez et copiez le contenu du fichier généré : ${BOLD}prompt_active.md${NC}"
+        echo -e "     Collez-le dans votre assistant IA en début de session pour l'initialiser."
+        echo "--------------------------------------------------------"
+    else
+        echo -e "${RED}❌ Erreur : Dossier d'agent introuvable à l'adresse $AGENT_DIR${NC}"
+    fi
+fi
 
-# --- 11. FINALISATION GITHUB ---
+# --- 12. FINALISATION GITHUB ---
 if [[ "$STEP_CHOICE" == "0" ]]; then
 if [[ "$CHOICE_ACTION" == "2" ]]; then
     echo -e "\n${GREEN}--- Finalisation du nouveau dépôt GitHub (First commit) ---${NC}"

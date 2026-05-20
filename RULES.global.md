@@ -1,0 +1,1 @@
+/home/pouet/dev-tools/agent/RULES.global.md

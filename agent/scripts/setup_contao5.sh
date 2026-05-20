@@ -216,13 +216,19 @@ fi
 
 fi
 
-# --- 5. PERMISSIONS ---
+# --- 5. PERMISSIONS (ROBUSTE) ---
 if [[ "$STEP_CHOICE" == "0" || "$STEP_CHOICE" == "5" ]]; then
-echo -e "\n${CYAN}5/8. Configuration des permissions...${NC}"
-# On s'assure que les dossiers sensibles sont accessibles en écriture pour Apache
-# Comme www-data est dans le groupe pouet, le 775 suffit
-chmod -R 775 assets system/tmp system/logs system/config system/cache 2>/dev/null || true
-echo -e "${GREEN}✅ Permissions configurées.${NC}"
+echo -e "\n${CYAN}5/8. Configuration des permissions (ACLs + Groupe)...${NC}"
+# On s'assure que tout appartient à ton utilisateur 'pouet' et au groupe 'www-data'
+sudo chown -R pouet:www-data .
+# On donne les droits d'écriture au groupe
+sudo chmod -R 775 .
+# Sticky Bit sur le groupe pour hériter de 'www-data' sur les nouveaux dossiers
+sudo find . -type d -exec chmod g+s {} +
+# ACLs pour garantir que les deux utilisateurs (IDE et Apache) ont accès à tout
+sudo setfacl -R -m u:www-data:rwX -m u:pouet:rwX .
+sudo setfacl -dR -m u:www-data:rwX -m u:pouet:rwX .
+echo -e "${GREEN}✅ Permissions configurées (ACLs activées).${NC}"
 
 fi
 

@@ -1,0 +1,6 @@
+# Optionnel : Ignorer les scripts shell s'ils contiennent des secrets
+# scripts/*.sh
+
+# Ignorer les fichiers temporaires, de sauvegarde ou minifiés
+*.min.md
+*.bak
