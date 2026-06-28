@@ -45,7 +45,17 @@ Ce script interactif vous demandera le chemin de votre projet, le template de co
 ### Étape 2 : Personnalisation du Contexte Projet
 Ouvrez le fichier `context.md` qui a été généré à la racine de votre projet. Personnalisez-le avec les technologies utilisées, vos règles d'architecture et surtout la **Matrice de Permissions** (les dossiers et fichiers que l'agent a le droit de modifier).
 
-### Étape 3 : Initialisation du Prompt
-1. Copiez le contenu de [**templates/prompt_master.md**](file:///home/pouet/dev-tools/agent/templates/prompt_master.md).
-2. Personnalisez les variables (chemins absolus de votre `context.md` et de votre répertoire de documentation globale).
+### Étape 3 : Initialisation du Prompt et Compatibilité des Assistants
+
+#### A. Pour Antigravity (ou assistants par copier-coller)
+1. Ouvrez le fichier généré `prompt_active.md` à la racine de votre projet (il a été personnalisé automatiquement avec vos chemins absolus).
+2. Copiez l'intégralité de son contenu.
 3. Collez-le dans votre session Antigravity en début de conversation. L'agent sera immédiatement aligné, sécurisé et ultra-performant.
+
+#### B. Pour Claude Code (CLI officiel d'Anthropic)
+Le script crée automatiquement un lien symbolique `CLAUDE.md` à la racine de votre projet, pointant vers `prompt_active.md`.
+* **Rien à faire !** Claude Code lit automatiquement ce fichier à chaque démarrage de session pour adopter instantanément toutes vos directives de développement.
+
+#### C. Pour Gemini Code Assist (VS Code / Google Cloud)
+Le script crée également un lien symbolique `GEMINI.md` à la racine de votre projet, pointant vers `prompt_active.md`.
+* **Intégration automatique !** Gemini Code Assist utilise ce fichier pour comprendre le contexte global, vos standards de codage et vos restrictions d'accès.

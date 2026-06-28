@@ -11,6 +11,59 @@
 3. **Flag before change** – Suggest, don't assume
 4. **Context is sacred** – Respect project constraints
 5. **Mode: Caveman** – Direct, snippets-first, zero verbiage
+6. **No independent tech/business decisions** – Never assume design or business rules. Always ask relevant questions to guide and align development.
+7. **Sequential Workflow & Model Guidance (Mandatory)** – L'agent édite les fichiers directement mais DOIT suivre un workflow séquentiel strict :
+   1. Produire un plan détaillé (`implementation_plan.md`) avec pour chaque étape une **suggestion de modèle IA**
+   2. Attendre la **validation explicite** de l'utilisateur
+   3. Exécuter **UNE étape à la fois**, mettre à jour `task.md`
+   4. **S'ARRÊTER** après chaque étape pour permettre le switch de modèle
+   5. Inclure les vérifications obligatoires pertinentes (syntaxe, tests, rendu)
+   6. En fin de tâche, mettre à jour le `DEVLOG.md` du projet
+8. **Sécurité Git & Sauvegardes** – NE JAMAIS lancer de commande destructive (comme `git checkout <fichier>`, `git restore`, `git reset`, `git clean`) sur des fichiers modifiés sans avoir sauvegardé les modifications en cours dans un fichier temporaire au préalable (ou demandé validation).
+
+   **Suggestions de modèle** (l'utilisateur choisit toujours) :
+   - `⚡ Flash Low` : tâches simples, formatage, vérifications, patchnotes
+   - `🔷 Flash High` : templates, SCSS standard, documentation, Kitchen Sink
+   - `🔶 Pro` : code complexe, debugging, refactoring, logique métier
+   - `🟣 Opus` : architecture, sécurité, planification complexe, raisonnement multi-étapes
+
+---
+
+## Profils de Tâches Spécialisées
+
+Chaque étape du plan d'implémentation correspond à un profil de tâche. L'agent suggère le modèle optimal pour chaque profil :
+
+### 📋 Planificateur
+* **Rôle** : Analyse la demande, produit le plan d'implémentation détaillé avec suggestion de modèle par étape.
+* **Modèle suggéré** : `🟣 Opus` / `🔶 Pro`
+
+### 🔨 Codeur
+* **Rôle** : Écrit le code (templates, SCSS, JS, PHP couche personnalisation).
+* **Modèle suggéré** : `🔷 Flash High` / `🔶 Pro`
+
+### 🧪 Testeur
+* **Rôle** : Met en place et exécute les tests récursifs/de régression.
+* **Modèle suggéré** : `⚡ Flash Low` / `🔷 Flash High`
+
+### 🚀 Release
+* **Rôle** : Exécute le commit avec commentaires structurés.
+* **Modèle suggéré** : `⚡ Flash Low`
+
+### 📝 Patchnote Client
+* **Rôle** : Rédige le patchnote non-technique destiné au client final.
+* **Modèle suggéré** : `⚡ Flash Low`
+
+### 📄 Doc Technique
+* **Rôle** : Met à jour la stack technique (.md) et le patchnote technique interne. CRITICAL: si ces fichiers n'existent pas, les créer dans `docs/` ou à la racine.
+* **Modèle suggéré** : `⚡ Flash Low` / `🔷 Flash High`
+
+### 🎨 Kitchen Sink
+* **Rôle** : Met à jour le catalogue visuel des composants UI du design system.
+* **Modèle suggéré** : `🔷 Flash High`
+
+### 📖 Historique Projet
+* **Rôle** : Met à jour le `DEVLOG.md` en fin de tâche complétée pour assurer la continuité entre sessions.
+* **Modèle suggéré** : `⚡ Flash Low`
 
 ---
 
@@ -170,6 +223,32 @@ When referencing Bootstrap:
 
 ---
 
+## Animation Transition Protocol (Mandatory — React Native / Reanimated)
+
+**Principe fondamental :** Toute transition entre deux états visuels (action, validation, changement d'étape) doit être fluide. Aucun élément ne disparaît ou n'apparaît brutalement.
+
+### Séquence "Déconstruction → Construction"
+
+```
+1. EXIT   : FadeOutDown staggeré HAUT→BAS  (délais 0, 60, 120, 180, 240ms / durée 250ms chacun)
+2. HANDOFF: handler parent appelé à t=500ms (setTimeout) — step change après la sortie complète
+3. ENTER  : FadeInUp staggeré BAS→HAUT    (délais 0, 100, 200, 300ms / durée 400–600ms)
+```
+
+### Règle de non-chevauchement
+
+- JAMAIS deux états/écrans dans le DOM simultanément.
+- `showReveal` local déclenché par `setTimeout(50)` après changement de step parent.
+- Parent sortant : `exiting={FadeOut.delay(490).duration(1)}` maintient le layout pendant que les enfants animent.
+
+### Interdits absolus
+- ❌ `exiting` sur des enfants sans `exiting` sur leur parent `Animated.View`
+- ❌ `LinearTransition` sur le container pendant une transition intro→reveal
+- ❌ Appel immédiat du handler parent depuis le bouton (change le step avant la fin des exits)
+- ❌ Deux blocs conditionnels coexistants dans le DOM (intro + reveal simultanément)
+
+---
+
 ## Global Constraints (Apply Everywhere)
 
 ### ✅ DO
@@ -179,6 +258,8 @@ When referencing Bootstrap:
 - **Flag migrations** – "Needs: ALTER TABLE..."
 - **Test file paths** – Exact paths, no assumptions
 - **Mode: Direct** – Snippets over prose
+- **Component Reuse** – ALWAYS use existing UI components (e.g. Button, Card) from the Kitchen Sink instead of creating custom-styled raw Views/Texts.
+- **Cancel Buttons as Links** – Les boutons "Annuler" doivent TOUJOURS utiliser `variant="link"` sur le composant `<Button>`.
 
 ### 🚫 DON'T
 - **Touch protected files** – src/, config/, migrations/, .env
@@ -186,6 +267,7 @@ When referencing Bootstrap:
 - **Assume DB structure** – Ask
 - **Modify framework code** – Only customization layers
 - **Break backward compat** – Without warning
+- **Design ponctuel** – Do not style raw Views/Texts for interactive elements if a reusable component exists.
 - **Verbosity** – Say in 1 sentence, not 5
 
 ---
@@ -235,7 +317,7 @@ When referencing Bootstrap:
 
 **Greeting response format:**
 ```
-🎯 [Project Name]
+🎯 [Project Name] | 📋 CLAUDE.md/GEMINI.md Actif
 📋 Using: [CONTEXT.md path] + [RULES.global.md]
 ⚠️ Protected: [list key files]
 ✅ Ready for: [key workflows]
@@ -256,6 +338,14 @@ When referencing Bootstrap:
 2️⃣ Reproduce: ...
 [...]
 ```
+
+**Sequential Workflow Protocol (Visual Prefix):**
+L'agent préfixe ses messages selon la phase en cours pour que l'utilisateur puisse suivre la progression et switcher de modèle au bon moment :
+* `📋 [Plan]` : Présentation du plan détaillé avec suggestions de modèle par étape.
+* `🔨 [Étape N/Total]` : Exécution d'une étape (+ rappel du modèle suggéré pour la suivante).
+* `✅ [Vérif]` : Étape de vérification obligatoire.
+* `📝 [Résumé]` : Walkthrough final des changements effectués.
+* `⏸️ [Pause]` : Signal d'arrêt entre deux étapes → "Tu peux switcher de modèle. Prochaine étape : [description] — Suggéré : [icône modèle]".
 
 ---
 

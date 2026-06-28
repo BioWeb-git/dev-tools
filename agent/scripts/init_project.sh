@@ -130,6 +130,19 @@ sed -e "s|\[INSERT: RULES.global.md path or link\]|${TARGET_DIR}/RULES.global.md
     -e "s|\[INSERT: local api docs path, e.g., /home/pouet/docs/api/\]|${TARGET_DIR}/.dev-tools-docs/|g" \
     "${AGENT_DIR}/templates/prompt_master.md" > prompt_active.md
 echo -e "${GREEN}✅ Fichier 'prompt_active.md' généré à la racine.${NC}"
+
+echo "Création des configurations natives pour Claude (CLAUDE.md) et Gemini (GEMINI.md)..."
+rm -f CLAUDE.md GEMINI.md
+sed -n '/^<!-- START_AGENT_CONFIG -->/,/^<!-- END_AGENT_CONFIG -->/p' prompt_active.md | grep -v '^<!--' > CLAUDE.md
+ln -sf "CLAUDE.md" "GEMINI.md"
+echo -e "${GREEN}✅ Fichiers 'CLAUDE.md' et 'GEMINI.md' configurés à la racine.${NC}"
+echo "Création de DEVLOG.md (historique des tâches pour continuité)..."
+if [ ! -f "DEVLOG.md" ]; then
+    echo -e "# DEVLOG - Suivi de Projet\n\nCe fichier journalise les tâches majeures réalisées sur le projet pour assurer le contexte entre sessions d'agent.\n\n---\n" > DEVLOG.md
+    echo -e "${GREEN}✅ Fichier 'DEVLOG.md' initialisé.${NC}"
+else
+    echo "Fichier 'DEVLOG.md' existant conservé."
+fi
 echo "--------------------------------------------------------"
 
 # --- 4. MISE À JOUR DU .GITIGNORE ---
@@ -141,7 +154,7 @@ if [[ "$UPDATE_GITIGNORE" == "y" || "$UPDATE_GITIGNORE" == "Y" ]]; then
     # S'assurer que le fichier .gitignore existe
     touch .gitignore
     
-    RULES_TO_IGNORE=(".dev-tools-templates" ".dev-tools-docs" "task.md" "walkthrough.md" "implementation_plan.md" "prompt_active.md")
+    RULES_TO_IGNORE=(".dev-tools-templates" ".dev-tools-docs" "task.md" "walkthrough.md" "implementation_plan.md" "prompt_active.md" "CLAUDE.md" "GEMINI.md" ".claude/")
     ADDED_ANY=false
     
     for rule in "${RULES_TO_IGNORE[@]}"; do
@@ -166,9 +179,12 @@ echo -e "Votre projet est maintenant prêt à accueillir n'importe quel agent de
 echo -e "Règles globales liées : ${BOLD}RULES.global.md${NC}"
 echo -e "Templates à disposition : ${BOLD}.dev-tools-templates/${NC}"
 echo -e "Fiche de contexte projet active : ${BOLD}context.md${NC}"
+echo -e "Configuration native Claude : ${BOLD}CLAUDE.md${NC}"
+echo -e "Configuration native Gemini : ${BOLD}GEMINI.md${NC}"
 echo "--------------------------------------------------------"
 echo -e "${YELLOW}${BOLD}👉 ÉTAPE SUIVANTE :${NC}"
-echo -e "  Ouvrez et copiez le contenu du fichier généré : ${BOLD}prompt_active.md${NC}"
-echo -e "  Collez-le dans votre assistant IA (comme Antigravity) en début de session."
-echo -e "  L'IA se chargera de tout scanner et configurer automatiquement !"
+echo -e "  - Pour ${BOLD}Antigravity${NC} : Ouvrez et copiez le contenu du fichier généré : ${BOLD}prompt_active.md${NC}."
+echo -e "    Collez-le dans votre assistant IA en début de session."
+echo -e "  - Pour ${BOLD}Claude Code${NC} ou ${BOLD}Gemini Code Assist${NC} : Ils détecteront et utiliseront automatiquement"
+echo -e "    les fichiers ${BOLD}CLAUDE.md${NC} et ${BOLD}GEMINI.md${NC} à la racine de ce dossier !"
 echo "--------------------------------------------------------"

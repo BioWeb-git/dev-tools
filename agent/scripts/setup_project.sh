@@ -491,18 +491,34 @@ if [[ "$STEP_CHOICE" == "0" || "$STEP_CHOICE" == "10" ]]; then
             -e "s|\[INSERT: local api docs path, e.g., /home/pouet/docs/api/\]|${PROJECT_DIR}/.dev-tools-docs/|g" \
             "${AGENT_DIR}/templates/prompt_master.md" > prompt_active.md
         
+        echo "   Création des configurations natives pour Claude (CLAUDE.md) et Gemini (GEMINI.md)..."
+        rm -f CLAUDE.md GEMINI.md
+        sed -n '/^<!-- START_AGENT_CONFIG -->/,/^<!-- END_AGENT_CONFIG -->/p' prompt_active.md | grep -v '^<!--' > CLAUDE.md
+        ln -sf "CLAUDE.md" "GEMINI.md"
+        echo "     Fichiers CLAUDE.md et GEMINI.md configurés à la racine."
+        
+        echo "   Création de DEVLOG.md (historique des tâches pour continuité)..."
+        if [ ! -f "DEVLOG.md" ]; then
+            echo -e "# DEVLOG - Suivi de Projet\n\nCe fichier journalise les tâches majeures réalisées sur le projet pour assurer le contexte entre sessions d'agent.\n\n---\n" > DEVLOG.md
+            echo "     Fichier DEVLOG.md initialisé."
+        else
+            echo "     Fichier DEVLOG.md existant conservé."
+        fi
+        
         echo "   Mise à jour du fichier .gitignore..."
         # On s'assure d'exclure les dossiers d'aide, les prompts actifs et les logs générés
-        for rule in ".dev-tools-templates" ".dev-tools-docs" "task.md" "walkthrough.md" "implementation_plan.md" "prompt_active.md"; do
+        for rule in ".dev-tools-templates" ".dev-tools-docs" "task.md" "walkthrough.md" "implementation_plan.md" "prompt_active.md" "CLAUDE.md" "GEMINI.md" ".claude/"; do
             if ! grep -q "^$rule" .gitignore 2>/dev/null; then
                 echo "$rule" >> .gitignore
             fi
         done
         echo -e "${GREEN}   ✅ Système d'agent IA déployé avec succès !${NC}"
         echo "--------------------------------------------------------"
-        echo -e "${YELLOW}${BOLD}   👉 ÉTAPE SUIVANTE POUR L'IA :${NC}"
-        echo -e "     Ouvrez et copiez le contenu du fichier généré : ${BOLD}prompt_active.md${NC}"
-        echo -e "     Collez-le dans votre assistant IA en début de session pour l'initialiser."
+        echo -e "${YELLOW}${BOLD}   👉 ÉTAPES SUIVANTES POUR LES ASSISTANTS IA :${NC}"
+        echo -e "     - Pour ${BOLD}Antigravity${NC} : Ouvrez et copiez le contenu du fichier généré : ${BOLD}prompt_active.md${NC}."
+        echo -e "       Collez-le dans votre assistant IA en début de session pour l'initialiser."
+        echo -e "     - Pour ${BOLD}Claude Code${NC} ou ${BOLD}Gemini Code Assist${NC} : Ils détecteront et utiliseront automatiquement"
+        echo -e "       les fichiers ${BOLD}CLAUDE.md${NC} et ${BOLD}GEMINI.md${NC} à la racine de ce dossier !"
         echo "--------------------------------------------------------"
     else
         echo -e "${RED}❌ Erreur : Dossier d'agent introuvable à l'adresse $AGENT_DIR${NC}"
